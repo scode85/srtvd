@@ -1,393 +1,866 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chuẩn hoá phụ đề SRT</title>
+<title>Nối SRT - tải file &amp; tự tính khoảng nghỉ</title>
 <style>
-  :root{
-    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --border:#2a2f3a;
-    --text:#e6e9ef; --muted:#8b94a7; --accent:#4f8cff; --accent2:#22c55e;
-    --warn:#f59e0b; --danger:#ef4444;
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #0f172a;
+    color: #e5e7eb;
+    padding: 24px;
   }
-  *{box-sizing:border-box}
-  body{
-    margin:0; background:var(--bg); color:var(--text);
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    min-height:100vh;
+  .app {
+    max-width: 1150px;
+    margin: 0 auto;
+    background: #111827;
+    border: 1px solid #1f2937;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
   }
-  header{ padding:22px 24px 8px; max-width:1400px; margin:0 auto; }
-  header h1{ margin:0 0 6px; font-size:22px; letter-spacing:-.3px; }
-  header p{ margin:0; color:var(--muted); font-size:13.5px }
-  .options{
-    max-width:1400px; margin:0 auto; padding:16px 24px 0;
-    display:flex; flex-wrap:wrap; gap:14px 26px; align-items:center;
+  h1 { margin: 0 0 8px; font-size: 24px; }
+  .desc { margin: 0 0 18px; color: #9ca3af; line-height: 1.5; }
+
+  /* Drop zone */
+  .drop {
+    border: 2px dashed #374151;
+    border-radius: 14px;
+    padding: 26px;
+    text-align: center;
+    color: #9ca3af;
+    background: #0b1220;
+    transition: .2s;
+    cursor: pointer;
+    margin-bottom: 16px;
   }
-  .opt{ display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text) }
-  .opt input[type=checkbox]{
-    width:16px;height:16px;accent-color:var(--accent);cursor:pointer;
+  .drop.dragover {
+    border-color: #38bdf8;
+    background: #082f49;
+    color: #e0f2fe;
   }
-  .opt input[type=text]{
-    width:130px; background:var(--panel2); border:1px solid var(--border);
-    color:var(--text); border-radius:8px; padding:6px 10px; font-size:13.5px;
-    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  .drop b { color: #38bdf8; text-decoration: underline; }
+  .drop .hint { display: block; margin-top: 6px; font-size: 12px; color: #6b7280; }
+
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 14px;
+    background: #0b1220;
+    border: 1px solid #1f2937;
+    border-radius: 12px;
   }
-  .opt input[type=text]:disabled{ opacity:.4 }
-  main{
-    max-width:1400px; margin:0 auto; padding:14px 24px 40px;
-    display:grid; grid-template-columns:1fr 1fr; gap:16px;
+  .topbar label { font-weight: 600; color: #d1d5db; }
+  .topbar input[type="number"] {
+    width: 90px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #374151;
+    background: #020617;
+    color: #e5e7eb;
+    font-size: 15px;
   }
-  .panel{
-    background:var(--panel); border:1px solid var(--border); border-radius:14px;
-    display:flex; flex-direction:column; overflow:hidden; min-height:480px;
+  .topbar button {
+    padding: 9px 16px;
+    border-radius: 9px;
+    border: 1px solid #0ea5e9;
+    background: #0284c7;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
   }
-  .panel-head{
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    padding:12px 14px; border-bottom:1px solid var(--border); background:var(--panel2);
+  .topbar button:hover { background: #0369a1; }
+
+  .panel {
+    background: #0b1220;
+    border: 1px solid #1f2937;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
   }
-  .panel-head h2{ margin:0; font-size:14px; font-weight:600; letter-spacing:.2px }
-  .tools{ display:flex; gap:8px; flex-wrap:wrap }
-  button, .filebtn{
-    background:#252b36; color:var(--text); border:1px solid var(--border);
-    border-radius:9px; padding:7px 12px; font-size:13px; cursor:pointer;
-    transition:.15s; font-family:inherit;
+  .panel h3 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    color: #38bdf8;
   }
-  button:hover, .filebtn:hover{ background:#2f3644; border-color:#3b4454 }
-  button:active{ transform:translateY(1px) }
-  button.primary{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600 }
-  button.primary:hover{ background:#3d7bf0 }
-  button.ghost{ background:transparent }
-  .filebtn{ display:inline-flex; align-items:center }
-  .filebtn input{ display:none }
-  textarea{
-    flex:1; width:100%; resize:none; border:0; outline:0; padding:14px;
-    background:var(--panel); color:var(--text); font-size:13.5px; line-height:1.55;
-    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    white-space:pre; overflow:auto; tab-size:2;
+  .mode-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 14px;
+    color: #d1d5db;
   }
-  #output{ background:#141820 }
-  textarea::placeholder{ color:#5a6478 }
-  .status{
-    max-width:1400px; margin:0 auto; padding:0 24px 24px;
-    font-size:13px; color:var(--muted); min-height:20px;
+  .mode-row label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 600;
   }
-  .status b{ color:var(--text); font-weight:600 }
-  .status .ok{ color:var(--accent2) }
-  .status .warn{ color:var(--warn) }
-  .status .err{ color:var(--danger) }
-  @media (max-width:900px){
-    main{ grid-template-columns:1fr }
-    .panel{ min-height:340px }
+  .mode-row input[type="radio"] { transform: scale(1.1); }
+
+  .time-input-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    color: #d1d5db;
+  }
+  .time-input-row .unit {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .time-input-row input {
+    width: 80px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #374151;
+    background: #020617;
+    color: #e5e7eb;
+    font-size: 15px;
+    text-align: center;
+  }
+
+  .gap-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: center;
+    color: #d1d5db;
+  }
+  .gap-row input[type="number"] {
+    width: 110px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    border: 1px solid #374151;
+    background: #0b1220;
+    color: #e5e7eb;
+  }
+  .gap-row input[type="checkbox"] { transform: scale(1.1); margin-right: 6px; }
+
+  .calc-result {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #052e16;
+    border: 1px solid #166534;
+    border-radius: 9px;
+    color: #86efac;
+    font-size: 14px;
+    line-height: 1.6;
+    display: none;
+  }
+  .calc-result.warn {
+    background: #451a03;
+    border-color: #9a3412;
+    color: #fdba74;
+  }
+
+  .inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 16px;
+  }
+  .input-block {
+    background: #0b1220;
+    border: 1px solid #1f2937;
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .input-block .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .input-block .head strong { color: #38bdf8; font-size: 15px; }
+  .input-block .head small { color: #9ca3af; }
+
+  .gap-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #d1d5db;
+    font-size: 13px;
+    background: #1f2937;
+    padding: 5px 9px;
+    border-radius: 8px;
+    border: 1px solid #374151;
+  }
+  .gap-control input {
+    width: 80px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid #4b5563;
+    background: #020617;
+    color: #e5e7eb;
+    font-size: 13px;
+  }
+  .gap-control input::placeholder { color: #6b7280; }
+
+  .input-block textarea {
+    width: 100%;
+    min-height: 160px;
+    resize: vertical;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #374151;
+    background: #020617;
+    color: #e5e7eb;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre;
+    overflow: auto;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 18px 0;
+  }
+  .actions button {
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid #374151;
+    background: #1f2937;
+    color: #e5e7eb;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .actions button:hover { background: #374151; }
+  .actions button.primary {
+    background: #0284c7;
+    border-color: #0ea5e9;
+    color: white;
+  }
+  .actions button.primary:hover { background: #0369a1; }
+
+  .status {
+    min-height: 22px;
+    color: #facc15;
+    margin: 8px 0;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  #output {
+    width: 100%;
+    min-height: 320px;
+    resize: vertical;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid #374151;
+    background: #020617;
+    color: #e5e7eb;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre;
+    overflow: auto;
   }
 </style>
 </head>
 <body>
+<div class="app">
+  <h1>Nối SRT - tải file &amp; tự tính khoảng nghỉ</h1>
+  <p class="desc">
+    Tải nhiều file <b>.srt</b> lên (hoặc kéo thả). Hệ thống hiện đúng số ô theo thứ tự file.
+    Bạn có thể tự động tính khoảng nghỉ theo tổng thời gian mục tiêu, hoặc chỉnh thủ công từng đoạn.
+  </p>
 
-<header>
-  <h1>Chuẩn hoá phụ đề SRT</h1>
-  <p>Đánh số lại từ 1 · Dời câu đầu về 00:00:00,000 · Giữ nguyên khoảng cách giữa các câu</p>
-</header>
+  <!-- KHU VỰC TẢI FILE -->
+  <div id="drop" class="drop">
+    Kéo thả file <b>.srt</b> vào đây hoặc <b id="pickLabel">chọn file</b>
+    <span class="hint">Hỗ trợ nhiều file cùng lúc - sắp xếp theo thứ tự bạn chọn</span>
+  </div>
+  <input id="fileInput" type="file" accept=".srt,text/plain" multiple hidden>
 
-<section class="options">
-  <label class="opt">
-    <input type="checkbox" id="optNumber" checked>
-    Đánh số lại từ 1
-  </label>
-  <label class="opt">
-    <input type="checkbox" id="optShift" checked>
-    Dời thời gian — câu đầu bắt đầu tại
-  </label>
-  <input type="text" id="target" value="00:00:00,000" spellcheck="false">
-</section>
+  <div class="topbar">
+    <label for="countInput">Số đoạn SRT:</label>
+    <input id="countInput" type="number" min="1" max="200" value="2">
+    <button id="applyCount">Tạo ô nhập</button>
+    <button id="moveUpAllBtn" style="background:#1f2937;border-color:#374151;color:#e5e7eb;">↑ File lên</button>
+    <button id="moveDownAllBtn" style="background:#1f2937;border-color:#374151;color:#e5e7eb;">↓ File xuống</button>
+    <span style="color:#9ca3af;font-size:13px;">(dùng để sắp xếp lại các đoạn)</span>
+  </div>
 
-<main>
-  <section class="panel">
-    <div class="panel-head">
-      <h2>SRT gốc</h2>
-      <div class="tools">
-        <label class="filebtn">Mở file<input type="file" id="file" accept=".srt,.txt,.vtt"></label>
-        <button class="ghost" id="btnSample">Ví dụ</button>
-        <button class="ghost" id="btnClear">Xoá</button>
-      </div>
+  <div class="panel">
+    <h3>Chế độ khoảng nghỉ</h3>
+
+    <div class="mode-row">
+      <label>
+        <input type="radio" name="gapMode" value="auto" checked>
+        Tự động tính theo tổng thời gian
+      </label>
+      <label>
+        <input type="radio" name="gapMode" value="manual">
+        Nhập khoảng nghỉ thủ công
+      </label>
     </div>
-    <textarea id="input" spellcheck="false" placeholder="Dán nội dung SRT vào đây...
 
-1001
-00:27:45,78 --> 00:27:55,77
-Nội dung câu thoại..."></textarea>
-  </section>
-
-  <section class="panel">
-    <div class="panel-head">
-      <h2>SRT đã xử lý</h2>
-      <div class="tools">
-        <button id="btnCopy">Sao chép</button>
-        <button class="primary" id="btnDownload">Tải .srt</button>
+    <div id="autoMode" class="time-input-row">
+      <span>Tổng thời lượng mục tiêu:</span>
+      <div class="unit">
+        <input id="targetH" type="number" min="0" value="0"> Giờ
       </div>
+      <div class="unit">
+        <input id="targetM" type="number" min="0" max="59" value="30"> Phút
+      </div>
+      <div class="unit">
+        <input id="targetS" type="number" min="0" max="59" value="59"> Giây
+      </div>
+      <button id="calcGapBtn" style="padding:8px 14px;border-radius:8px;border:1px solid #0ea5e9;background:#0284c7;color:#fff;font-weight:600;cursor:pointer;">
+        Tính khoảng nghỉ
+      </button>
     </div>
-    <textarea id="output" readonly spellcheck="false" placeholder="Kết quả sẽ hiện ở đây..."></textarea>
-  </section>
-</main>
 
-<div class="status" id="status"></div>
+    <div id="manualMode" class="gap-row" style="display:none; margin-top:4px;">
+      <label>
+        Khoảng nghỉ mặc định (ms):
+        <input id="gap" type="number" value="0" min="0" step="10">
+      </label>
+    </div>
+
+    <div id="calcResult" class="calc-result"></div>
+  </div>
+
+  <div class="gap-row" style="margin-top:4px;">
+    <label>
+      <input id="reset" type="checkbox" checked>
+      Mỗi đoạn bắt đầu từ cue đầu tiên (bỏ khoảng trống đầu file)
+    </label>
+  </div>
+
+  <div id="inputs" class="inputs"></div>
+
+  <div class="actions">
+    <button id="mergeBtn" class="primary">Nối SRT</button>
+    <button id="downloadBtn">Tải .srt</button>
+    <button id="copyBtn">Copy</button>
+    <button id="applyGapAllBtn">Áp dụng khoảng nghỉ cho tất cả đoạn</button>
+    <button id="clearBtn">Xóa hết nội dung</button>
+  </div>
+
+  <p id="status" class="status"></p>
+  <textarea id="output" placeholder="Kết quả SRT sẽ hiện ở đây..."></textarea>
+</div>
 
 <script>
-(() => {
-  "use strict";
+  const countInput = document.getElementById('countInput');
+  const applyCount = document.getElementById('applyCount');
+  const inputsWrap = document.getElementById('inputs');
+  const output = document.getElementById('output');
+  const statusEl = document.getElementById('status');
+  const calcResult = document.getElementById('calcResult');
+  const autoMode = document.getElementById('autoMode');
+  const manualMode = document.getElementById('manualMode');
+  const fileInput = document.getElementById('fileInput');
+  const drop = document.getElementById('drop');
+  const pickLabel = document.getElementById('pickLabel');
 
-  const $ = id => document.getElementById(id);
-  const inputEl   = $("input");
-  const outputEl  = $("output");
-  const statusEl  = $("status");
-  const optNumber = $("optNumber");
-  const optShift  = $("optShift");
-  const targetEl  = $("target");
-
-  const pad = (n, l = 2) => String(n).padStart(l, "0");
-
-  /* ---------- Regex dòng thời gian ---------- */
-  const TIME_RE  = /^\s*(\d{1,3}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,3}):(\d{2}):(\d{2})[,.](\d{1,3})/;
-  const INDEX_RE = /^\s*\d+\s*$/;
-
-  /* ms dạng 1–3 chữ số -> pad phải (78 -> 780) */
-  function msPart(v){ return Number((v + "00").slice(0, 3)); }
-
-  function toMs(h, m, s, ms){
-    return ((+h) * 3600 + (+m) * 60 + (+s)) * 1000 + msPart(ms);
+  // ===== Parse / Format =====
+  function parseTime(str) {
+    const m = str.trim().match(/^(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})$/);
+    if (!m) return NaN;
+    const h = parseInt(m[1], 10);
+    const mi = parseInt(m[2], 10);
+    const s = parseInt(m[3], 10);
+    let ms = m[4];
+    if (ms.length === 1) ms += '00';
+    else if (ms.length === 2) ms += '0';
+    else if (ms.length > 3) ms = ms.slice(0, 3);
+    return ((h * 60 + mi) * 60 + s) * 1000 + parseInt(ms, 10);
   }
 
-  function fmt(ms){
+  function formatTime(ms) {
     ms = Math.max(0, Math.round(ms));
     const h = Math.floor(ms / 3600000);
-    const m = Math.floor(ms / 60000) % 60;
-    const s = Math.floor(ms / 1000) % 60;
-    const f = ms % 1000;
-    return `${pad(h)}:${pad(m)}:${pad(s)},${pad(f, 3)}`;
+    ms -= h * 3600000;
+    const m = Math.floor(ms / 60000);
+    ms -= m * 60000;
+    const s = Math.floor(ms / 1000);
+    const milli = ms - s * 1000;
+    return (
+      String(h).padStart(2, '0') + ':' +
+      String(m).padStart(2, '0') + ':' +
+      String(s).padStart(2, '0') + ',' +
+      String(milli).padStart(3, '0')
+    );
   }
 
-  /* ---------- Parse SRT ---------- */
-  function parseSrt(text){
-    const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  function parseSRT(text) {
+    const clean = text
+      .replace(/^\uFEFF/, '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n');
+
+    const lines = clean.split('\n');
     const cues = [];
     let i = 0;
 
-    const isTime = k => k < lines.length && TIME_RE.test(lines[k]);
-    const isIndexBeforeTime = k =>
-      k + 1 < lines.length && INDEX_RE.test(lines[k]) && TIME_RE.test(lines[k + 1]);
+    while (i < lines.length) {
+      while (i < lines.length && lines[i].trim() === '') i++;
+      if (i >= lines.length) break;
 
-    while (i < lines.length){
-      let index = null;
+      if (/^\d+$/.test(lines[i].trim())) i++;
+      if (i >= lines.length) break;
 
-      if (isIndexBeforeTime(i)) {
-        index = lines[i].trim();
-        i++;
-      }
+      const timeLine = lines[i].trim();
+      const m = timeLine.match(
+        /(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})/
+      );
 
-      const m = lines[i] && lines[i].match(TIME_RE);
-      if (!m){
-        i++;
+      if (!m) {
+        while (i < lines.length && lines[i].trim() !== '') i++;
         continue;
       }
 
-      const start = toMs(m[1], m[2], m[3], m[4]);
-      const end   = toMs(m[5], m[6], m[7], m[8]);
+      const start = parseTime(m[1]);
+      const end = parseTime(m[2]);
       i++;
 
       const textLines = [];
-      while (
-        i < lines.length &&
-        lines[i].trim() !== "" &&
-        !isTime(i) &&
-        !isIndexBeforeTime(i)
-      ){
+      while (i < lines.length && lines[i].trim() !== '') {
         textLines.push(lines[i]);
         i++;
       }
 
-      cues.push({ index, start, end, text: textLines.join("\n") });
+      const content = textLines.join('\n').trim();
+      if (content && !isNaN(start) && !isNaN(end)) {
+        cues.push({ start, end, text: content });
+      }
     }
+
     return cues;
   }
 
-  /* ---------- Parse ô "bắt đầu tại" ---------- */
-  function parseTarget(v){
-    v = (v || "").trim();
-    if (!v) return 0;
+  // ===== Build UI =====
+  function buildInputs(count, initialValues) {
+    inputsWrap.innerHTML = '';
 
-    // HH:MM:SS[,mmm]  hoặc  MM:SS[,mmm]
-    let m = v.match(/^(?:(\d{1,3}):)?(\d{1,2}):(\d{1,2})(?:[,.](\d{1,3}))?$/);
-    if (m){
-      const h  = m[1] ? +m[1] : 0;
-      const mi = +m[2];
-      const s  = +m[3];
-      const ms = m[4] ? msPart(m[4]) : 0;
-      return (h * 3600 + mi * 60 + s) * 1000 + ms;
+    for (let i = 1; i <= count; i++) {
+      const block = document.createElement('div');
+      block.className = 'input-block';
+
+      const head = document.createElement('div');
+      head.className = 'head';
+
+      const title = document.createElement('strong');
+      title.textContent = `Đoạn SRT #${i}`;
+
+      const right = document.createElement('div');
+      right.style.display = 'flex';
+      right.style.alignItems = 'center';
+      right.style.gap = '10px';
+
+      const small = document.createElement('small');
+      small.textContent = 'Nội dung SRT';
+
+      const gapBox = document.createElement('div');
+      gapBox.className = 'gap-control';
+      gapBox.innerHTML = `Nghỉ sau: <input type="number" min="0" step="10" placeholder="mặc định" data-gap-index="${i}"> ms`;
+
+      right.append(small, gapBox);
+      head.append(title, right);
+
+      const ta = document.createElement('textarea');
+      ta.id = 'srt-' + i;
+      ta.placeholder = `Ví dụ:\n1\n00:00:00,000 --> 00:00:01,820\nNội dung phụ đề...\n`;
+
+      if (initialValues && initialValues[i - 1] !== undefined) {
+        ta.value = initialValues[i - 1];
+      }
+
+      block.append(head, ta);
+      inputsWrap.append(block);
     }
-
-    // số giây: "0", "1.5", "12,25"
-    const n = parseFloat(v.replace(",", "."));
-    if (!isNaN(n)) return Math.round(n * 1000);
-    return 0;
   }
 
-  /* ---------- Xử lý ---------- */
-  let lastResult = "";
+  // ===== File upload =====
+  function pickFiles() {
+    fileInput.click();
+  }
 
-  function build(){
-    const raw = inputEl.value;
-    if (!raw.trim()){
-      outputEl.value = "";
-      lastResult = "";
-      setStatus("");
+  pickLabel.addEventListener('click', e => {
+    e.stopPropagation();
+    pickFiles();
+  });
+
+  drop.addEventListener('click', e => {
+    if (e.target === pickLabel) return;
+    pickFiles();
+  });
+
+  fileInput.addEventListener('change', async e => {
+    const files = Array.from(e.target.files || []);
+    fileInput.value = '';
+    if (!files.length) return;
+
+    // Sắp xếp theo tên file (tự nhiên, ví dụ p1, p2, p10)
+    files.sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
+
+    const texts = [];
+    for (const f of files) {
+      try {
+        const t = await f.text();
+        texts.push(t);
+      } catch (err) {
+        texts.push('');
+      }
+    }
+
+    // Cập nhật số đoạn = số file
+    countInput.value = texts.length;
+    buildInputs(texts.length, texts);
+    calcResult.style.display = 'none';
+    statusEl.textContent = `Đã tải ${texts.length} file: ${files.map(f => f.name).join(', ')}`;
+  });
+
+  // Kéo thả
+  ['dragenter', 'dragover'].forEach(ev => {
+    drop.addEventListener(ev, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      drop.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach(ev => {
+    drop.addEventListener(ev, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      drop.classList.remove('dragover');
+    });
+  });
+  drop.addEventListener('drop', async e => {
+    const files = Array.from(e.dataTransfer.files || []);
+    if (!files.length) return;
+
+    files.sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
+
+    const texts = [];
+    for (const f of files) {
+      try {
+        const t = await f.text();
+        texts.push(t);
+      } catch (err) {
+        texts.push('');
+      }
+    }
+
+    countInput.value = texts.length;
+    buildInputs(texts.length, texts);
+    calcResult.style.display = 'none';
+    statusEl.textContent = `Đã thả ${texts.length} file: ${files.map(f => f.name).join(', ')}`;
+  });
+
+  // ===== Mode switch =====
+  document.querySelectorAll('input[name="gapMode"]').forEach(r => {
+    r.addEventListener('change', () => {
+      const isAuto = document.querySelector('input[name="gapMode"]:checked').value === 'auto';
+      autoMode.style.display = isAuto ? 'flex' : 'none';
+      manualMode.style.display = isAuto ? 'none' : 'flex';
+    });
+  });
+
+  // ===== Helpers =====
+  function getPerSegmentGap(index, defaultGap) {
+    const el = document.querySelector(`input[data-gap-index="${index}"]`);
+    if (!el) return defaultGap;
+    const v = el.value.trim();
+    if (v === '') return defaultGap;
+    const n = parseInt(v, 10);
+    if (isNaN(n) || n < 0) return defaultGap;
+    return n;
+  }
+
+  function getSegmentInfo(n) {
+    const resetEach = document.getElementById('reset').checked;
+    const list = [];
+    for (let i = 1; i <= n; i++) {
+      const ta = document.getElementById('srt-' + i);
+      if (!ta) continue;
+      const raw = ta.value.trim();
+      if (!raw) {
+        list.push({ index: i, cues: [], duration: 0, isEmpty: true });
+        continue;
+      }
+      const cues = parseSRT(raw);
+      if (!cues.length) {
+        list.push({ index: i, cues: [], duration: 0, isEmpty: true });
+        continue;
+      }
+      const base = resetEach ? cues[0].start : 0;
+      let maxEnd = 0;
+      for (const c of cues) {
+        maxEnd = Math.max(maxEnd, c.end - base);
+      }
+      list.push({ index: i, cues, duration: maxEnd, isEmpty: false });
+    }
+    return list;
+  }
+
+  // ===== Auto calculate gap =====
+  document.getElementById('calcGapBtn').onclick = () => {
+    let n = parseInt(countInput.value, 10);
+    if (isNaN(n) || n < 1) n = 1;
+
+    const H = Math.max(0, parseInt(document.getElementById('targetH').value, 10) || 0);
+    const M = Math.max(0, parseInt(document.getElementById('targetM').value, 10) || 0);
+    const S = Math.max(0, parseInt(document.getElementById('targetS').value, 10) || 0);
+    const targetMs = ((H * 60 + M) * 60 + S) * 1000;
+
+    const info = getSegmentInfo(n);
+    const valid = info.filter(x => !x.isEmpty);
+
+    calcResult.style.display = 'block';
+    calcResult.classList.remove('warn');
+
+    if (!valid.length) {
+      calcResult.classList.add('warn');
+      calcResult.textContent = 'Chưa có đoạn SRT nào có nội dung hợp lệ. Hãy tải file hoặc dán SRT vào các ô trước.';
       return;
     }
 
-    const cues = parseSrt(raw);
-    if (!cues.length){
-      outputEl.value = "";
-      lastResult = "";
-      setStatus('<span class="err">Không tìm thấy dòng thời gian hợp lệ (dạng 00:00:00,000 --&gt; 00:00:00,000).</span>');
+    const sumDuration = valid.reduce((a, x) => a + x.duration, 0);
+    const gapsCount = valid.length - 1;
+
+    if (gapsCount <= 0) {
+      calcResult.classList.add('warn');
+      calcResult.textContent =
+        `Chỉ có 1 đoạn hợp lệ nên không có khoảng nghỉ giữa các đoạn. ` +
+        `Tổng thời lượng hiện tại: ${formatTime(sumDuration)}.`;
       return;
     }
 
-    const minStart = cues.reduce((a, c) => Math.min(a, c.start), Infinity);
-    const targetMs = optShift.checked ? parseTarget(targetEl.value) : minStart;
-    const shift    = optShift.checked ? (minStart - targetMs) : 0;
+    const remain = targetMs - sumDuration;
 
-    let bad = 0;
-    const blocks = cues.map((c, i) => {
-      const s = Math.max(0, c.start - shift);
-      const e = Math.max(0, c.end   - shift);
-      if (e <= s) bad++;
+    if (remain < 0) {
+      calcResult.classList.add('warn');
+      calcResult.textContent =
+        `Không thể khớp mục tiêu: tổng thời lượng các cue (${formatTime(sumDuration)}) ` +
+        `đã vượt quá mục tiêu (${formatTime(targetMs)}). ` +
+        `Cần tăng tổng thời gian mục tiêu hoặc giảm nội dung phụ đề.`;
+      return;
+    }
 
-      const num = optNumber.checked ? (i + 1) : (c.index || (i + 1));
-      return `${num}\n${fmt(s)} --> ${fmt(e)}\n${c.text}`;
+    const gapMs = Math.floor(remain / gapsCount);
+    const leftover = remain - gapMs * gapsCount;
+
+    const validIndexes = valid.map(v => v.index);
+    const indexesForGap = validIndexes.slice(0, -1);
+
+    document.querySelectorAll('input[data-gap-index]').forEach(el => el.value = '');
+
+    indexesForGap.forEach((idx, k) => {
+      const el = document.querySelector(`input[data-gap-index="${idx}"]`);
+      if (!el) return;
+      const v = gapMs + (k === 0 ? leftover : 0);
+      el.value = v;
     });
 
-    lastResult = blocks.join("\n\n") + "\n";
-    outputEl.value = lastResult;
+    document.getElementById('gap').value = gapMs;
 
-    const first = cues[0];
-    const info = [
-      `Đã xử lý <b>${cues.length}</b> câu.`,
-      `Câu đầu: <b>${fmt(first.start)}</b> → <b>${fmt(Math.max(0, first.start - shift))}</b>`,
-      optShift.checked
-        ? `Đã dời sớm <b>${fmt(shift)}</b> — câu đầu bắt đầu tại <b>${fmt(targetMs)}</b>.`
-        : `Không dời thời gian.`,
-      `<span class="ok">✔ Khoảng cách giữa các câu được giữ nguyên 100%.</span>`
-    ];
-    if (bad) info.push(`<span class="warn">⚠ ${bad} câu có thời lượng ≤ 0, hãy kiểm tra lại.</span>`);
+    calcResult.classList.remove('warn');
+    calcResult.innerHTML =
+      `Tổng thời lượng các cue: <b>${formatTime(sumDuration)}</b><br>` +
+      `Tổng mục tiêu: <b>${formatTime(targetMs)}</b><br>` +
+      `Số khe giữa các đoạn hợp lệ: <b>${gapsCount}</b><br>` +
+      `→ Khoảng nghỉ mỗi khe: <b>${gapMs} ms</b>` +
+      (leftover > 0 ? ` (+ ${leftover} ms bù vào khe đầu tiên để khớp tuyệt đối)` : '') +
+      `<br><span style="color:#a7f3d0">Đã tự động điền vào ô "Nghỉ sau" của từng đoạn.</span>`;
 
-    setStatus(info.join(" "));
+    statusEl.textContent = 'Đã tính toán và điền khoảng nghỉ tự động.';
+  };
+
+  // ===== Count apply (giữ nội dung hiện có khi tăng/giảm số ô) =====
+  applyCount.addEventListener('click', () => {
+    let n = parseInt(countInput.value, 10);
+    if (isNaN(n) || n < 1) n = 1;
+    if (n > 200) n = 200;
+    countInput.value = n;
+
+    // Lấy nội dung hiện tại để không mất dữ liệu đã dán
+    const current = [];
+    document.querySelectorAll('.input-block textarea').forEach(ta => current.push(ta.value));
+
+    // Lấy gap hiện tại (map theo index)
+    const currentGaps = {};
+    document.querySelectorAll('input[data-gap-index]').forEach(el => {
+      currentGaps[el.dataset.gapIndex] = el.value;
+    });
+
+    buildInputs(n, current);
+
+    // Phục hồi gap đã nhập
+    Object.keys(currentGaps).forEach(k => {
+      const el = document.querySelector(`input[data-gap-index="${k}"]`);
+      if (el) el.value = currentGaps[k];
+    });
+
+    calcResult.style.display = 'none';
+    statusEl.textContent = `Đã tạo ${n} ô nhập theo thứ tự từ trên xuống.`;
+  });
+
+  // ===== Di chuyển toàn bộ file (sắp xếp lại nhanh) =====
+  function moveAll(direction) {
+    const blocks = Array.from(inputsWrap.querySelectorAll('.input-block'));
+    if (blocks.length < 2) return;
+
+    const items = blocks.map(b => ({
+      text: b.querySelector('textarea').value,
+      gap: b.querySelector('input[data-gap-index]')?.value || ''
+    }));
+
+    if (direction === 'up') {
+      const first = items.shift();
+      items.push(first);
+    } else {
+      const last = items.pop();
+      items.unshift(last);
+    }
+
+    buildInputs(items.length);
+    items.forEach((it, k) => {
+      const ta = document.getElementById('srt-' + (k + 1));
+      if (ta) ta.value = it.text;
+      const g = document.querySelector(`input[data-gap-index="${k + 1}"]`);
+      if (g) g.value = it.gap;
+    });
+
+    statusEl.textContent = direction === 'up' ? 'Đã xoay vòng file lên.' : 'Đã xoay vòng file xuống.';
   }
 
-  function setStatus(html){ statusEl.innerHTML = html || ""; }
+  document.getElementById('moveUpAllBtn').onclick = () => moveAll('up');
+  document.getElementById('moveDownAllBtn').onclick = () => moveAll('down');
 
-  /* ---------- Sự kiện ---------- */
-  let timer;
-  const schedule = () => { clearTimeout(timer); timer = setTimeout(build, 120); };
+  // ===== Apply default gap to all =====
+  document.getElementById('applyGapAllBtn').onclick = () => {
+    const def = Math.max(0, parseInt(document.getElementById('gap').value, 10) || 0);
+    document.querySelectorAll('input[data-gap-index]').forEach(el => {
+      el.value = def;
+    });
+    statusEl.textContent = `Đã áp dụng ${def} ms cho tất cả các đoạn.`;
+  };
 
-  inputEl.addEventListener("input", schedule);
-  optNumber.addEventListener("change", build);
-  optShift.addEventListener("change", () => {
-    targetEl.disabled = !optShift.checked;
-    build();
-  });
-  targetEl.addEventListener("input", schedule);
+  // ===== Merge =====
+  document.getElementById('mergeBtn').onclick = () => {
+    let n = parseInt(countInput.value, 10);
+    if (isNaN(n) || n < 1) n = 1;
 
-  targetEl.disabled = !optShift.checked;
+    const defaultGap = Math.max(0, parseInt(document.getElementById('gap').value, 10) || 0);
+    const resetEach = document.getElementById('reset').checked;
 
-  /* Mở file */
-  $("file").addEventListener("change", e => {
-    const f = e.target.files[0];
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = () => { inputEl.value = r.result; build(); };
-    r.readAsText(f, "utf-8");
-    e.target.value = "";
-  });
+    let cursor = 0;
+    const out = [];
+    let number = 1;
+    let totalCues = 0;
+    const warnings = [];
 
-  /* Kéo–thả file vào ô nhập */
-  inputEl.addEventListener("dragover", e => e.preventDefault());
-  inputEl.addEventListener("drop", e => {
-    e.preventDefault();
-    const f = e.dataTransfer.files[0];
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = () => { inputEl.value = r.result; build(); };
-    r.readAsText(f, "utf-8");
-  });
+    for (let i = 1; i <= n; i++) {
+      const ta = document.getElementById('srt-' + i);
+      if (!ta) continue;
+      const raw = ta.value.trim();
 
-  /* Ví dụ */
-  $("btnSample").addEventListener("click", () => {
-    inputEl.value =
-`1001
-00:27:12,050 --> 00:27:13,710
-Bất kể sau đó đệ ấy có thử bao nhiêu lần đi nữa,
+      if (!raw) {
+        warnings.push(`Ô #${i} trống`);
+        continue;
+      }
 
-1002
-00:27:13,710 --> 00:27:16,590
-thì tình hình vẫn y như cũ. Cả một xe đậu hũ giờ chỉ còn lại hai miếng nguyên vẹn.
+      const cues = parseSRT(raw);
+      if (!cues.length) {
+        warnings.push(`Ô #${i} không có cue hợp lệ`);
+        continue;
+      }
 
-1003
-00:27:16,590 --> 00:27:17,710
-Vân Chi cũng không nhìn nổi nữa,
+      const base = resetEach ? cues[0].start : 0;
+      const fileStart = cursor;
+      let maxEnd = 0;
 
-1004
-00:27:17,710 --> 00:27:18,770
-liền bảo đệ ấy phải tìm đúng cảm giác,
+      for (const cue of cues) {
+        const start = fileStart + (cue.start - base);
+        const end = fileStart + (cue.end - base);
+        maxEnd = Math.max(maxEnd, end);
 
-1005
-00:27:18,770 --> 00:27:20,610
-dùng cơ thể để khống chế sức mạnh chứ không phải dùng linh đài.
-`;
-    build();
-  });
+        out.push(
+          `${number++}\n` +
+          `${formatTime(start)} --> ${formatTime(end)}\n` +
+          `${cue.text}\n`
+        );
+        totalCues++;
+      }
 
-  /* Xoá */
-  $("btnClear").addEventListener("click", () => {
-    inputEl.value = "";
-    outputEl.value = "";
-    lastResult = "";
-    setStatus("");
-    inputEl.focus();
-  });
-
-  /* Sao chép */
-  $("btnCopy").addEventListener("click", async () => {
-    if (!lastResult){ setStatus('<span class="warn">Chưa có kết quả để sao chép.</span>'); return; }
-    try {
-      await navigator.clipboard.writeText(lastResult);
-      setStatus('<span class="ok">✔ Đã sao chép kết quả vào clipboard.</span>');
-    } catch {
-      outputEl.select();
-      document.execCommand("copy");
-      setStatus('<span class="ok">✔ Đã sao chép.</span>');
+      const segGap = getPerSegmentGap(i, defaultGap);
+      cursor = maxEnd + segGap;
     }
-  });
 
-  /* Tải file */
-  $("btnDownload").addEventListener("click", () => {
-    if (!lastResult){ setStatus('<span class="warn">Chưa có kết quả để tải.</span>'); return; }
-    const blob = new Blob(["\uFEFF" + lastResult], { type: "text/plain;charset=utf-8" });
+    output.value = out.join('\n');
+
+    const totalDuration = cursor > 0 ? cursor : 0;
+    statusEl.textContent =
+      `Đã nối ${totalCues} cue. Tổng thời lượng sau khi nối: ${formatTime(totalDuration)}.` +
+      (warnings.length ? ` Cảnh báo: ${warnings.join('; ')}` : '');
+  };
+
+  // ===== Download / Copy / Clear =====
+  document.getElementById('downloadBtn').onclick = () => {
+    const text = output.value;
+    if (!text.trim()) {
+      statusEl.textContent = 'Chưa có kết quả để tải.';
+      return;
+    }
+
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = "output.srt";
+    a.download = 'merged.srt';
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  });
 
-  /* Ctrl+S để tải nhanh */
-  document.addEventListener("keydown", e => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s"){
-      e.preventDefault();
-      $("btnDownload").click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    statusEl.textContent = 'Đã tạo file merged.srt.';
+  };
+
+  document.getElementById('copyBtn').onclick = async () => {
+    const text = output.value;
+    if (!text.trim()) {
+      statusEl.textContent = 'Chưa có kết quả để copy.';
+      return;
     }
-  });
-})();
+    try {
+      await navigator.clipboard.writeText(text);
+      statusEl.textContent = 'Đã copy kết quả.';
+    } catch (err) {
+      output.select();
+      document.execCommand('copy');
+      statusEl.textContent = 'Đã copy kết quả.';
+    }
+  };
+
+  document.getElementById('clearBtn').onclick = () => {
+    document.querySelectorAll('.input-block textarea').forEach(ta => ta.value = '');
+    document.querySelectorAll('input[data-gap-index]').forEach(el => el.value = '');
+    output.value = '';
+    calcResult.style.display = 'none';
+    statusEl.textContent = 'Đã xóa nội dung các ô nhập và kết quả.';
+  };
+
+  buildInputs(2);
 </script>
 </body>
 </html>
